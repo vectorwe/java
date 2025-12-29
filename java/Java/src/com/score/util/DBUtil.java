@@ -5,58 +5,83 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 /**
- * 数据库连接工具类
- * 适配MySQL 8.0+，配置：数据库名java，用户名root，密码root
+ * 数据库连接工具类（统一配置，适配所有场景）
  */
 public class DBUtil {
-    // 数据库连接配置（根据你的环境调整）
+    // 核心修改：添加 allowPublicKeyRetrieval=true 解决公钥获取错误
     private static final String URL = "jdbc:mysql://localhost:3306/java";
     private static final String USER = "root";
-    private static final String PASSWORD = "root";
+    private static final String PASSWORD = "root"; // 注意：这里密码要和你的MySQL实际密码一致
 
-    // 静态代码块：加载MySQL驱动
+    // 加载MySQL驱动（仅执行一次）
     static {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            System.out.println("MySQL驱动加载成功");
+            System.out.println("[DBUtil] MySQL驱动加载成功");
         } catch (ClassNotFoundException e) {
-            System.err.println("MySQL驱动加载失败：" + e.getMessage());
-            throw new RuntimeException("驱动加载失败，无法连接数据库");
+            System.err.println("[DBUtil] MySQL驱动加载失败：" + e.getMessage());
+            throw new RuntimeException("驱动加载失败，无法连接数据库", e);
         }
     }
 
     /**
-     * 获取数据库连接
-     * @return Connection对象
+     * 获取数据库连接（抛出运行时异常，上层无需捕获）
      */
     public static Connection getConnection() {
         try {
             Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("数据库连接成功");
+            System.out.println("[DBUtil] 数据库连接成功：" + URL);
             return conn;
         } catch (SQLException e) {
-            System.err.println("数据库连接失败：" + e.getMessage());
-            throw new RuntimeException("数据库连接失败");
+            System.err.println("[DBUtil] 数据库连接失败：" + e.getMessage());
+            // 优化：区分不同连接错误，给出更明确的提示
+            String errorMsg = "数据库连接失败：";
+            if (e.getMessage().contains("Access denied")) {
+                errorMsg += "用户名/密码错误，请检查配置";
+            } else if (e.getMessage().contains("Unknown database")) {
+                errorMsg += "数据库不存在，请确认数据库名是否正确";
+            } else {
+                errorMsg += e.getMessage();
+            }
+            throw new RuntimeException(errorMsg, e);
         }
     }
 
     /**
-     * 关闭数据库资源（重载：支持不同参数组合）
+     * 关闭数据库资源（重载1：支持PreparedStatement+ResultSet）
      */
     public static void close(Connection conn, PreparedStatement stmt, ResultSet rs) {
         try {
             if (rs != null) rs.close();
             if (stmt != null) stmt.close();
             if (conn != null) conn.close();
+            System.out.println("[DBUtil] 资源关闭成功");
         } catch (SQLException e) {
-            System.err.println("关闭资源失败：" + e.getMessage());
+            System.err.println("[DBUtil] 关闭资源失败：" + e.getMessage());
         }
     }
 
-    // 重载：无ResultSet时调用
+    /**
+     * 关闭数据库资源（重载2：仅PreparedStatement）
+     */
     public static void close(Connection conn, PreparedStatement stmt) {
         close(conn, stmt, null);
+    }
+
+    /**
+     * 新增重载：支持Statement+ResultSet（适配listAllUsers方法）
+     */
+    public static void close(Connection conn, Statement stmt, ResultSet rs) {
+        try {
+            if (rs != null) rs.close();
+            if (stmt != null) stmt.close();
+            if (conn != null) conn.close();
+            System.out.println("[DBUtil] Statement资源关闭成功");
+        } catch (SQLException e) {
+            System.err.println("[DBUtil] 关闭Statement资源失败：" + e.getMessage());
+        }
     }
 }

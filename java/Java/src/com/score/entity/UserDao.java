@@ -43,14 +43,35 @@ public interface UserDao {
      * @return 成功返回true，失败返回false
      */
     boolean deleteUser(String username);
-    // 根据用户名+邮箱查询用户（忘记密码验证）
-    User getUserByUsernameAndEmail(String username, String email);
 
-    // 重置密码
-    boolean resetPassword(String username, String newPassword);
     /**
      * 查询所有用户
      * @return 用户列表（无数据返回空列表）
      */
     List<User> listAllUsers();
+
+    /**
+     * 根据用户名+邮箱查询用户（忘记密码验证）
+     * @param username 用户名
+     * @param email 邮箱
+     * @return 匹配返回User对象，否则返回null
+     */
+    User getUserByUsernameAndEmail(String username, String email);
+
+    /**
+     * 根据用户名+邮箱+手机号查询用户（三重验证）
+     * @param username 用户名
+     * @param email 邮箱
+     * @param tel 手机号
+     * @return 匹配返回User对象，否则返回null
+     */
+    User getUserByUsernameEmailTel(String username, String email, String tel);
+
+    /**
+     * 重置密码
+     * @param username 用户名
+     * @param newPassword 新密码
+     * @return 成功返回true，失败返回false
+     */
+    boolean resetPassword(String username, String newPassword);
 }
